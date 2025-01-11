@@ -1,54 +1,46 @@
 <?php
-//memulai session atau melanjutkan session yang sudah ada
+// Memulai session atau melanjutkan session yang sudah ada
 session_start();
 
-//menyertakan code dari file koneksi
+// Menyertakan code dari file koneksi
 include "koneksi.php";
 
-//check jika sudah ada user yang login arahkan ke halaman admin
+// Check jika sudah ada user yang login arahkan ke halaman admin
 if (isset($_SESSION['username'])) { 
-	header("location:admin.php"); 
+    header("location:admin.php"); 
+    exit();
 }
 
+// Jika form dikirim dengan metode POST
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-  $username = $_POST['user'];
-  
-  //menggunakan fungsi enkripsi md5 supaya sama dengan password  yang tersimpan di database
-  $password = md5($_POST['pass']);
+    $username = htmlspecialchars($_POST['user']);
+    $password = md5(htmlspecialchars($_POST['pass'])); // Enkripsi password dengan md5
 
-	//prepared statement
-  $stmt = $conn->prepare("SELECT username 
-                          FROM user 
-                          WHERE username=? AND password=?");
+    // Menggunakan prepared statement untuk mencegah SQL Injection
+    $stmt = $conn->prepare("SELECT username FROM user WHERE username=? AND password=?");
+    $stmt->bind_param("ss", $username, $password);
 
-	//parameter binding 
-  $stmt->bind_param("ss", $username, $password);//username string dan password string
-  
-  //database executes the statement
-  $stmt->execute();
-  
-  //menampung hasil eksekusi
-  $hasil = $stmt->get_result();
-  
-  //mengambil baris dari hasil sebagai array asosiatif
-  $row = $hasil->fetch_array(MYSQLI_ASSOC);
+    // Menjalankan query
+    $stmt->execute();
 
-  //check apakah ada baris hasil data user yang cocok
-  if (!empty($row)) {
-    //jika ada, simpan variable username pada session
-    $_SESSION['username'] = $row['username'];
+    // Menyimpan hasil eksekusi
+    $hasil = $stmt->get_result();
+    $row = $hasil->fetch_assoc();
 
-    //mengalihkan ke halaman admin
-    header("location:admin.php");
-  } else {
-	  //jika tidak ada (gagal), alihkan kembali ke halaman login
-    header("location:login.php");
-  }
+    // Check apakah ada user yang cocok
+    if ($row) {
+        // Jika ada, simpan variable username pada session
+        $_SESSION['username'] = $row['username'];
+        header("location:admin.php");
+    } else {
+        // Jika tidak ada (login gagal), tampilkan pesan error
+        $error_message = "Username atau Password salah!";
+    }
 
-	//menutup koneksi database
-  $stmt->close();
-  $conn->close();
-} else {
+    // Menutup koneksi database
+    $stmt->close();
+    $conn->close();
+}
 ?>
 
 <!DOCTYPE html>
@@ -68,7 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
         .card-header {
-            background-color: #b3d9ff;/
+            background-color: #b3d9ff;
             color: #ffffff;
             font-size: 1.5rem;
             font-weight: bold;
@@ -94,19 +86,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="row justify-content-center mt-5">
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header text-center">
-                    Welcome to My daily Journal
+                    Welcome to My Daily Journal
                 </div>
                 <div class="card-body">
-                    <?php
-                    $username = "admin";
-                    $password = "12345";
-                    ?>
+                    <?php if (isset($error_message)) { ?>
+                        <div class="alert text-center"> <?php echo $error_message; ?> </div>
+                    <?php } ?>
 
                     <form method="post">
                         <div class="mb-3">
@@ -126,27 +116,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <small>&copy; 2024 - Your Website</small>
                 </div>
             </div>
-
-            <div class="mt-3 text-center">
-                <?php
-                if ($_REQUEST) {
-                    if ($_POST['user'] == "admin" and $_POST['pass'] == "12345") {
-                   
-                        header("Location: A11202314985.html");
-                        exit();
-                    } else {
-                        echo '<div class="alert mt-3">Username atau Password salah!</div>';
-                    }
-                }
-                ?>
-            </div>
         </div>
     </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-<?php
-}
-?>
